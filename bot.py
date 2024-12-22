@@ -122,10 +122,11 @@ async def get_weather(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data == '1_day')
 async def weather_1_day(callback: types.CallbackQuery):
     try:
-        global user_states
+        global user_states, city_temp
         await callback.answer()
         text = ''
         weather = Weather(api_key=api_key_weather)
+        city_temp[callback.message.from_user.id] = {}
         for city in user_states[callback.from_user.id]:
             city_code = weather.get_city_code(city)
             weather_city = weather.get_weather(city_code, '1day')
@@ -137,7 +138,7 @@ async def weather_1_day(callback: types.CallbackQuery):
                                                  weather_city['speed_wind'], weather_city['probability'])
             description = '. '.join(analysis[:-1])
             level = analysis[-1]
-            city_temp[city] = weather_city['temp']
+            city_temp[callback.message.from_user.id][city] = weather_city['temp']
             text += f'Погода для города {city} на {weather_city["date"]}\n\n' + temp + '\n' + humidity + '\n' + speed_wind + '\n' + probability + '\n' + f'Анализ погоды: {description}' + '\n' + f'Уровень погоды: {level}\n\n'
         await callback.message.answer(text)
         user_states = {}
@@ -153,15 +154,16 @@ async def weather_1_day(callback: types.CallbackQuery):
 
 # то же самое, только для 5 дней
 @dp.callback_query(F.data == '5_day')
-async def weather_1_day(callback: types.CallbackQuery):
+async def weather_5_day(callback: types.CallbackQuery):
     try:
         global user_states
         await callback.answer()
         text = ''
         weather = Weather(api_key=api_key_weather)
+        city_temp[callback.message.from_user.id] = {}
         for city in user_states[callback.from_user.id]:
             city_code = weather.get_city_code(city)
-            city_temp[city] = []
+            city_temp[callback.message.from_user.id][city] = []
             weather_city = weather.get_weather(city_code, '5day')
             for day in weather_city:
                 temp = f'Температура: {day["temp"]}°C'
@@ -172,7 +174,7 @@ async def weather_1_day(callback: types.CallbackQuery):
                                                      day['speed_wind'], day['probability'])
                 description = '. '.join(analysis[:-1])
                 level = analysis[-1]
-                city_temp[city].append((day['date'], day['temp']))
+                city_temp[callback.message.from_user.id][city].append((day['date'], day['temp']))
                 text += f'Погода для города {city} на {day["date"]}\n\n' + temp + '\n' + humidity + '\n' + speed_wind + '\n' + probability + '\n' + f'Анализ погоды: {description}' + '\n' + f'Уровень погоды: {level}\n\n'
         await callback.message.answer(text)
         user_states = {}
@@ -190,6 +192,7 @@ async def weather_1_day(callback: types.CallbackQuery):
 @dp.callback_query(F.data == 'no_graph')
 async def goodbye_user(callback: types.CallbackQuery):
     user_states[callback.from_user.id] = []
+    city_temp[callback.message.from_user.id] = {}
     await callback.answer()
     await callback.message.answer('Всего доброго! Если хотите еще раз попробовать, напишите команду /weather')
 
@@ -199,11 +202,12 @@ async def goodbye_user(callback: types.CallbackQuery):
 async def create_graph_5_day(callback: types.CallbackQuery):
     try:
         global city_temp
+        print(city_temp)
         await callback.answer()
-        file_name = plot_5_day(city_temp=city_temp)
+        file_name = plot_5_day(city_temp=city_temp[callback.message.from_user.id])
         photo_file = FSInputFile(path=file_name)  # открытие файла для отправки
         await bot.send_photo(chat_id=callback.message.chat.id, photo=photo_file)  # отпрвляем
-        city_temp = {}
+        city_temp[callback.message.from_user.id] = {}
         os.remove(file_name)  # удалеям файл с пк, так как он больше не нужен
     except Exception as error:
         await send_error_message(callback.message.chat.id, bot, error)
@@ -213,12 +217,14 @@ async def create_graph_5_day(callback: types.CallbackQuery):
 async def create_graph_1_day(callback: types.CallbackQuery):
     try:
         global city_temp
+        print(city_temp)
+        city_temp_user = city_temp[callback.message.from_user.id]
         await callback.answer()
-        file_name = plot_1_day(city_temp.values(),
-                               city_temp.keys())
+        file_name = plot_1_day(city_temp_user.values(),
+                               city_temp_user.keys())
         photo_file = FSInputFile(path=file_name)  # открытие файла для отправки
         await bot.send_photo(chat_id=callback.message.chat.id, photo=photo_file)  # отпрвляем
-        city_temp = {}
+        city_temp[callback.message.from_user.id] = {}
         os.remove(file_name)  # удалеям файл с пк, так как он больше не нужен
     except Exception as error:
         await send_error_message(callback.message.chat.id, bot, error)
