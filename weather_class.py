@@ -1,5 +1,6 @@
 import requests
 
+'''код с проекта 2 и 3. Не менял его с этих проектов'''
 class Weather:
 
     api_url_city = 'http://dataservice.accuweather.com/locations/v1/cities/search' #ссылка на api для определения места
@@ -28,6 +29,7 @@ class Weather:
             raise Exception(f'Ошибка: {error}')
 
     def get_city_code(self, city):
+        print(city)
         try:
             params = {'apikey': self.api_key,
                       'q': city}
@@ -45,7 +47,7 @@ class Weather:
                 raise PermissionError('Доступ запрещен')
         except Exception as error:
             raise Exception(f'Ошибка: {error}')
-    def get_weather(self, code, day):
+    def get_weather(self, code, day='1day'):
         try:
             if day == '1day':
                 params_weather = {'apikey': self.api_key,
