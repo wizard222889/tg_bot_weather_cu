@@ -6,7 +6,7 @@ from weather_class import Weather
 from units import *
 import asyncio
 
-#токены
+# токены
 api_token = '7667666842:AAE3o_4zjg9sbyIeAmhumyVGdhszb3sK1mQ'
 api_key_weather = 'UZAiiZaLBi3NFh8rKjwreAQy9DeZSjEQ'
 
@@ -30,32 +30,42 @@ async def help(message: types.Message):
                          'Команда /weather - прогноз погоды по начальной и конечной точки, также есть возможность вписать дополнительные города')
 
 
-#через fsm получаем ответы от пользователя(начальная, конечная, и потом бесконечно дополнительные точки
+# через fsm получаем ответы от пользователя(начальная, конечная, и потом бесконечно дополнительные точки
 @dp.message(F.text == '/weather')
 async def weather_start_city(message: types.Message, state: FSMContext):
     try:
         user_states[message.from_user.id] = []
         await state.set_state(Form.first_city)
-        await message.answer(f'Введите начальный город: ')
+        await message.answer(f'Введите начальный город(или отправь свое местоположение): ')
     except Exception as error:
         await send_error_message(message.chat.id, bot, error)
 
 
-@dp.message(F.text, Form.first_city)
+@dp.message((F.text | F.location), Form.first_city)
 async def weather_end_city(message: types.Message, state: FSMContext):
     try:
-        user_states[message.from_user.id] = [message.text]
-        await message.answer(f'Введи конечный город: ')
+        if message.location != None:
+            weather = Weather(api_key=api_key_weather)
+            user_states[message.from_user.id] = [
+                weather.get_city(message.location.latitude, message.location.longitude)]
+        else:
+            user_states[message.from_user.id] = [message.text]
+        await message.answer(f'Введи конечный город(или отправь свое местоположение): ')
         await state.set_state(Form.end_city)
     except Exception as error:
         await send_error_message(message.chat.id, bot, error)
 
 
-#делаем удобней через инлайн кнопки
-@dp.message(F.text, Form.end_city)
+# делаем удобней через инлайн кнопки
+@dp.message((F.text | F.location), Form.end_city)
 async def weather_add_city(message: types.Message, state: FSMContext):
     try:
-        user_states[message.from_user.id].append(message.text)
+        if message.location != None:
+            weather = Weather(api_key=api_key_weather)
+            user_states[message.from_user.id].append(
+                weather.get_city(message.location.latitude, message.location.longitude))
+        else:
+            user_states[message.from_user.id].append(message.text)
         button_yes = InlineKeyboardButton(text='Да', callback_data='yes')
         button_no = InlineKeyboardButton(text='Нет', callback_data='no')
         inline_keyboard = InlineKeyboardMarkup(
@@ -66,7 +76,8 @@ async def weather_add_city(message: types.Message, state: FSMContext):
     except Exception as error:
         await send_error_message(message.chat.id, bot, error)
 
-#повторяем до тех пор, пока пользователь не нажмет на no
+
+# повторяем до тех пор, пока пользователь не нажмет на no
 @dp.callback_query(F.data == 'yes')
 async def additional_cities_on(callback: types.CallbackQuery, state: FSMContext):
     try:
@@ -90,7 +101,8 @@ async def additional_cities_off(message: types.Message):
     except Exception as error:
         await send_error_message(message.chat.id, bot, error)
 
-#с помощью инлайн кнопок выбираем временной промежуток
+
+# с помощью инлайн кнопок выбираем временной промежуток
 @dp.callback_query(F.data == 'no')
 async def get_weather(callback: types.CallbackQuery, state: FSMContext):
     try:
@@ -105,7 +117,8 @@ async def get_weather(callback: types.CallbackQuery, state: FSMContext):
     except Exception as error:
         await send_error_message(callback.message.chat.id, bot, error)
 
-#реализуем запрос к классу weather(из 2 проекта) для каждого города. Вот тут для погоды на 1 день. Дальше предложим вывести график
+
+# реализуем запрос к классу weather(из 2 проекта) для каждого города. Вот тут для погоды на 1 день. Дальше предложим вывести график
 @dp.callback_query(F.data == '1_day')
 async def weather_1_day(callback: types.CallbackQuery):
     try:
@@ -138,7 +151,7 @@ async def weather_1_day(callback: types.CallbackQuery):
         await send_error_message(callback.message.chat.id, bot, error)
 
 
-#то же самое, только для 5 дней
+# то же самое, только для 5 дней
 @dp.callback_query(F.data == '5_day')
 async def weather_1_day(callback: types.CallbackQuery):
     try:
@@ -172,24 +185,26 @@ async def weather_1_day(callback: types.CallbackQuery):
     except Exception as error:
         await send_error_message(callback.message.chat.id, bot, error)
 
-#попрощаемся с пользователем, если он не захочет ничего делать
+
+# попрощаемся с пользователем, если он не захочет ничего делать
 @dp.callback_query(F.data == 'no_graph')
 async def goodbye_user(callback: types.CallbackQuery):
     user_states[callback.from_user.id] = []
     await callback.answer()
     await callback.message.answer('Всего доброго! Если хотите еще раз попробовать, напишите команду /weather')
 
-#для графика на 5 дней построим с помощью функции из units.py
+
+# для графика на 5 дней построим с помощью функции из units.py
 @dp.callback_query(F.data == 'yes_graph_5_day')
 async def create_graph_5_day(callback: types.CallbackQuery):
     try:
         global city_temp
         await callback.answer()
         file_name = plot_5_day(city_temp=city_temp)
-        photo_file = FSInputFile(path=file_name) #открытие файла для отправки
-        await bot.send_photo(chat_id=callback.message.chat.id, photo=photo_file) #отпрвляем
+        photo_file = FSInputFile(path=file_name)  # открытие файла для отправки
+        await bot.send_photo(chat_id=callback.message.chat.id, photo=photo_file)  # отпрвляем
         city_temp = {}
-        os.remove(file_name) #удалеям файл с пк, так как он больше не нужен
+        os.remove(file_name)  # удалеям файл с пк, так как он больше не нужен
     except Exception as error:
         await send_error_message(callback.message.chat.id, bot, error)
 
@@ -201,14 +216,15 @@ async def create_graph_1_day(callback: types.CallbackQuery):
         await callback.answer()
         file_name = plot_1_day(city_temp.values(),
                                city_temp.keys())
-        photo_file = FSInputFile(path=file_name) #открытие файла для отправки
-        await bot.send_photo(chat_id=callback.message.chat.id, photo=photo_file) #отпрвляем
+        photo_file = FSInputFile(path=file_name)  # открытие файла для отправки
+        await bot.send_photo(chat_id=callback.message.chat.id, photo=photo_file)  # отпрвляем
         city_temp = {}
-        os.remove(file_name) #удалеям файл с пк, так как он больше не нужен
+        os.remove(file_name)  # удалеям файл с пк, так как он больше не нужен
     except Exception as error:
         await send_error_message(callback.message.chat.id, bot, error)
 
-#ответчик на все необработанные запросы
+
+# ответчик на все необработанные запросы
 @dp.message()
 async def unrecognized_message(message: types.Message):
     await message.answer('Извините, я не понял ваш запрос. Попробуйте использовать команды или кнопки.')

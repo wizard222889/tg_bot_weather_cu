@@ -3,19 +3,20 @@ import requests
 '''код с проекта 2 и 3. Не менял его с этих проектов'''
 class Weather:
 
+    api_url_coord = 'http://dataservice.accuweather.com/locations/v1/cities/geoposition/search'
     api_url_city = 'http://dataservice.accuweather.com/locations/v1/cities/search' #ссылка на api для определения места
     api_url_weather_1day = 'http://dataservice.accuweather.com/forecasts/v1/daily/1day/' #для определения погоды
     api_url_weather_5day = 'http://dataservice.accuweather.com/forecasts/v1/daily/5day/'
     def __init__(self, api_key):
         self.api_key = api_key
 
-    def get_coord(self, city):
+    def get_city(self, lat, lon):
         try:
             params = {'apikey': self.api_key,
-                      'q': city}
+                      'q': f'{lat},{lon}'}
             r = requests.get(self.api_url_city, params=params)
             r.raise_for_status()
-            return (r.json()[0]['GeoPosition']['Latitude'], r.json()[0]['GeoPosition']['Longitude'])
+            return r.json()[0]['AdministrativeArea']['LocalizedName']
         except requests.exceptions.ConnectionError:
             raise ConnectionError("Не удалось подключиться к серверу")
         except requests.exceptions.HTTPError:
