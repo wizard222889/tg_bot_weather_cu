@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import matplotlib.pyplot as plt
 from aiogram import Bot
 import os
@@ -7,15 +6,6 @@ import requests
 import uuid
 
 #с помощью matplotlib построим график для 1 дня
-=======
-import os
-import matplotlib.pyplot as plt
-from aiogram.types import InputFile
-import pandas as pd
-import uuid
-
-
->>>>>>> origin/main
 def plot_1_day(temp, city):
     plt.figure()
     plt.bar(city, temp)
@@ -27,11 +17,8 @@ def plot_1_day(temp, city):
     plt.savefig(file_name)
     return file_name
 
-<<<<<<< HEAD
 #с помощью matplotlib построим график для 5 дней
-=======
 
->>>>>>> origin/main
 def plot_5_day(city_temp):
     data_weather = []
     for city, weather in city_temp.items():
@@ -52,7 +39,6 @@ def plot_5_day(city_temp):
     file_name = f'graph_5_day_{uuid.uuid4()}.jpg'
     plt.savefig(file_name)
     return file_name
-<<<<<<< HEAD
 
 #обработчки ошибок(в частности направлен на работу с api погоды, в обычных ошибках будет подробности выдавать)
 async def send_error_message(chat_id, bot: Bot, exception: Exception):
@@ -69,5 +55,4 @@ async def send_error_message(chat_id, bot: Bot, exception: Exception):
     else:
         error_message = f"Произошла непредвиденная ошибка, повторите позже. Подробности: {str(exception)}"
     await bot.send_message(chat_id, error_message)
-=======
->>>>>>> origin/main
+
